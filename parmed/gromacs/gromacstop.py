@@ -2024,6 +2024,14 @@ class GromacsTopologyFile(Structure):
                 else:
                     raise GromacsError('Cannot determine SETTLE geometry') # pragma: no cover
             dest.write('1     1   %.8f   %.8f\n\n#endif\n\n' % (doh, dhh))
+        if struct.virtual_sitesn :
+            dest.write('[ virtual_sitesn ]\n')
+            dest.write(';%6s %5s %s \n' % ('ai', 'funct','aj, ak...'))
+            for v in struct.virtual_sitesn :
+                dest.write('%-5d %-4d %s'%(v.atom.idx+1, v.type,          
+                            " ".join(["%-4d"%(a.idx+1) for a in v.atomlist])))
+                dest.write('\n')
+            dest.write('\n')
         # Virtual sites
         if EPs:
             ftypes = set(type(a.frame_type) for a in EPs)

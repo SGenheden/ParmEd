@@ -206,6 +206,8 @@ class Structure(object):
         List of all H-bond donors, if that information is present
     groups : :class:`TrackedList` (:class:`Group`)
         List of all CHARMM-style GROUP objects (whatever those are used for)
+    virtual_sitesn : :class:`TrackedList`
+        List of all Gromacs virtual sites of type n
     box : ``list of 6 floats``
         Box dimensions (a, b, c, alpha, beta, gamma) for the unit cell. If no
         box is defined, `box` is set to `None`
@@ -283,6 +285,7 @@ class Structure(object):
         self.acceptors = TrackedList()
         self.donors = TrackedList()
         self.groups = TrackedList()
+        self.virtual_sitesn = TrackedList()
 
         # Parameter type lists
         self.bond_types = TrackedList()
@@ -624,6 +627,9 @@ class Structure(object):
             )
         for g in self.groups:
             c.groups.append(Group(atoms[g.atom.idx], g.type, g.move))
+        for v in self.virtual_sitesn:
+            c.virtual_sitesn.append(VirtualSiteN(v.atom.idx, v.type,
+                                    [a.idx for a in v.atomlist]))
         c._box = copy(self._box)
         c._coordinates = copy(self._coordinates)
         c.combining_rule = self.combining_rule
@@ -690,7 +696,7 @@ class Structure(object):
                 self.stretch_bend_types.changed or
                 self.torsion_torsion_types.changed or
                 self.pi_torsion_types.changed or self.rb_torsions.changed or
-                self.rb_torsion_types.changed)
+                self.rb_torsion_types.changed or self.virtual_sitesn.changed)
 
     #===================================================
 
@@ -715,6 +721,7 @@ class Structure(object):
         self.acceptors.changed = False
         self.donors.changed = False
         self.groups.changed = False
+        self.virtual_sitesn.changed = False
 
         # Parameter type lists
         self.bond_types.changed = False
@@ -3537,7 +3544,7 @@ class Structure(object):
                     self.dihedral_types or self.urey_bradley_types or self.improper_types or
                     self.rb_torsion_types or self.cmap_types or self.trigonal_angle_types or
                     self.out_of_plane_bend_types or self.pi_torsion_types or
-                    self.torsion_torsion_types or self.adjust_types)
+                    self.torsion_torsion_types or self.adjust_types or self.virtual_sitesn)
 
     __nonzero__ = __bool__ # for Python 2
 

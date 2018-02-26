@@ -29,7 +29,7 @@ __all__ = ['Angle', 'AngleType', 'Atom', 'AtomList', 'Bond', 'BondType', 'Chiral
            'NonbondedExceptionType', 'AmoebaNonbondedExceptionType', 'AcceptorDonor', 'Group',
            'AtomType', 'NoUreyBradley', 'ExtraPoint', 'TwoParticleExtraPointFrame',
            'ThreeParticleExtraPointFrame', 'OutOfPlaneExtraPointFrame', 'RBTorsionType',
-           'UnassignedAtomType']
+           'UnassignedAtomType', 'VirtualSiteN']
 
 # Create the AKMA unit system which is the unit system used by Amber and CHARMM
 scale_factor = u.sqrt(1/u.kilocalories_per_mole * (u.daltons * u.angstroms**2))
@@ -361,6 +361,8 @@ class Atom(_ListItem):
         list of Atoms with which this atom is excluded, but not bonded, angled,
         or dihedraled to. Do not modify this attribute -- it will almost
         certainly not do what you think it will
+    virtualsiten : ``list`` of :class:`Atom`
+        list of Atoms to which this atom forms a virtual site of type N
     marked : ``int``
         Mainly for internal use, it is used to indicate when certain atoms have
         been "marked" when traversing the bond network identifying topological
@@ -506,6 +508,7 @@ class Atom(_ListItem):
         self._rmin14 = _strip_units(rmin14, u.angstroms)
         self._epsilon14 = _strip_units(epsilon14, u.kilocalories_per_mole)
         self.children = []
+        self.virtualsiten = []
 
     #===================================================
 
@@ -4132,6 +4135,52 @@ class MultipoleFrame(object):
 
     def __contains__(self, thing):
         return self.atom is thing
+
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+class VirtualSiteN(object):
+    """
+    A Gromacs virtual site of type N
+
+    Parameters
+    ----------
+    atom : :class:`Atom`
+        The atom that is the virtual site
+    atomlist : list of :class:`Atom`
+        The atoms making up this virtual site
+    type : int
+        The virtual site type (2)
+
+
+    Examples
+    --------
+    >>> a1, a2, a3, a4 = Atom(), Atom(), Atom(), Atom()
+    >>> site = VirtualSiteN(a1, [a2, a3, a4])
+    """
+    def __init__(self, atom, atomlist, type=2):
+        """ Site constructor """
+        self.atom = atom
+        self.atomlist = atomlist
+        # Log this site in the atoms
+        atom.virtualsiten.append(self)
+        for a in atomlist :
+            a.virtualsiten.append(self)
+        self.type = type
+
+    def delete(self):
+        """
+        Deletes this site from the atoms that make it up.
+        """
+        _delete_from_list(self.atom.virtualsiten, self)
+        for a in self.atomlist :
+            _delete_from_list(a.virtualsiten, self)
+
+        self.atom = None
+        self.atomlist = []
+
+    def __repr__(self):
+        return '<%s %r--[%s]; type=%d>' % (type(self).__name__,
+                self.atom, " ".join(["%r"%a for a in self.atomlist]), self.type)
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
