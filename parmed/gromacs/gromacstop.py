@@ -38,7 +38,10 @@ from parmed.utils.six.moves import range
 
 try:
     import pwd
-    _username = pwd.getpwuid(os.getuid())[0]
+    try:
+        _username = pwd.getpwuid(os.getuid())[0]
+    except KeyError:
+        _username = 'username'
     _userid = os.getuid()
     _uname = os.uname()[1]
 except ImportError:
@@ -47,6 +50,7 @@ except ImportError:
     _userid = 0                     # pragma: no cover
     import platform                 # pragma: no cover
     _uname = platform.node()        # pragma: no cover
+
 
 
 # Gromacs uses "funct" flags in its parameter files to indicate what kind of
@@ -276,6 +280,7 @@ class GromacsTopologyFile(Structure):
         dihedral_types = dict()
         exc_types = dict()
         structure_contents = []
+        molnames = []
         if defines is None:
             defines = OrderedDict(FLEXIBLE=1)
         proper_multiterm_dihedrals = dict()
@@ -296,6 +301,7 @@ class GromacsTopologyFile(Structure):
                                            % molname)
                     molecule = Structure()
                     molecules[molname] = (molecule, nrexcl)
+                    molnames.append(molname)
                     molecule.nrexcl = nrexcl
                     bond_types = dict()
                     angle_types = dict()
@@ -422,6 +428,13 @@ class GromacsTopologyFile(Structure):
                     a, b, t = self._parse_pairtypes(line)
                     params.pair_types[(a, b)] = params.pair_types[(b, a)] = t
             itplist = f.included_files
+
+        # If the file did not contain the molecules section, perhaps
+        # because it was an itp-file. We assume that each molecule loaded
+        # should be contained once in this structure
+        if not structure_contents :
+            for name in molnames :
+                structure_contents.append((name, 1))
 
         # Combine first, then parametrize. That way, we don't have to create
         # copies of the ParameterType instances in self.parameterset
